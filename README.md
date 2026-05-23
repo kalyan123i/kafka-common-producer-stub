@@ -111,6 +111,23 @@ Unknown placeholders pass through unchanged. Example:
 
 To add more (e.g. `${random.int}`), extend the `switch` in `JsonPlaceholderResolver`.
 
+## Avro logical types
+
+Human-readable JSON values are accepted for these logical types and converted to the underlying primitive automatically (the schema's `logicalType` tag is preserved on the wire):
+
+| Logical type | Underlying | Accepted JSON |
+|---|---|---|
+| `date` | `int` (days since epoch) | `"2026-01-01"` or full ISO timestamp (UTC date portion) or integer days |
+| `time-millis` | `int` | `"14:30:00"` or integer millis |
+| `time-micros` | `long` | `"14:30:00"` or integer micros |
+| `timestamp-millis` | `long` | `"2026-01-01T00:00:00Z"` or integer epoch millis |
+| `timestamp-micros` | `long` | ISO instant or integer epoch micros |
+| `local-timestamp-millis` | `long` | `"2026-01-01T00:00:00"` or integer |
+| `local-timestamp-micros` | `long` | `"2026-01-01T00:00:00"` or integer |
+| `uuid` | `string` | any string |
+
+The sample schema demonstrates `date` (`birthDate`) and `timestamp-millis` (`createdAt`).
+
 ## Mapping rules (strict + defaults)
 
 - Field names in the JSON must match the Avro schema field names exactly.

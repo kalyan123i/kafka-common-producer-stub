@@ -1,12 +1,20 @@
 package com.example.kafkastub.mapping;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.springframework.stereotype.Component;
 
 import java.nio.ByteBuffer;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -24,6 +32,9 @@ import java.util.stream.Collectors;
  */
 @Component
 public class JsonToAvroMapper {
+
+    /** Sentinel: convertLogical didn't recognize the logical type, fall back to primitive handling. */
+    private static final Object UNHANDLED = new Object();
 
     public GenericRecord toRecord(JsonNode json, Schema schema) {
         if (schema.getType() != Schema.Type.RECORD) {
@@ -72,6 +83,11 @@ public class JsonToAvroMapper {
     }
 
     private Object convert(JsonNode json, Schema schema, String path) {
+        LogicalType logical = schema.getLogicalType();
+        if (logical != null) {
+            Object v = convertLogical(json, schema, logical, path);
+            if (v != UNHANDLED) return v;
+        }
         return switch (schema.getType()) {
             case RECORD -> buildRecord(json, schema, path);
             case STRING -> json.isTextual() ? json.asText() : json.toString();
@@ -125,6 +141,19 @@ public class JsonToAvroMapper {
     }
 
     private static boolean jsonMatchesBranch(JsonNode json, Schema branch) {
+        LogicalType lt = branch.getLogicalType();
+        if (lt != null) {
+            switch (lt.getName()) {
+                case "date", "time-millis", "time-micros",
+                     "timestamp-millis", "timestamp-micros",
+                     "local-timestamp-millis", "local-timestamp-micros":
+                    return json.isTextual() || json.isIntegralNumber();
+                case "uuid":
+                    return json.isTextual();
+                default:
+                    // fall through to underlying primitive check
+            }
+        }
         return switch (branch.getType()) {
             case STRING, ENUM -> json.isTextual();
             case INT, LONG -> json.isIntegralNumber() || (json.isTextual() && isIntegral(json.asText()));
@@ -136,6 +165,82 @@ public class JsonToAvroMapper {
             case NULL -> json.isNull();
             case UNION -> false;
         };
+    }
+
+    /**
+     * Handle common Avro logical types. The value stored in the GenericRecord is the underlying
+     * primitive (int days for date, long millis for timestamp-millis, etc.) — KafkaAvroSerializer
+     * encodes it and the schema's logicalType tag is preserved on the wire.
+     */
+    private Object convertLogical(JsonNode json, Schema schema, LogicalType logical, String path) {
+        String name = logical.getName();
+        try {
+            return switch (name) {
+                case "date" -> {
+                    if (json.isIntegralNumber()) yield json.intValue();
+                    String s = json.asText();
+                    yield (int) parseLocalDateLenient(s).toEpochDay();
+                }
+                case "time-millis" -> {
+                    if (json.isIntegralNumber()) yield json.intValue();
+                    yield (int) (LocalTime.parse(json.asText()).toNanoOfDay() / 1_000_000L);
+                }
+                case "time-micros" -> {
+                    if (json.isIntegralNumber()) yield json.longValue();
+                    yield LocalTime.parse(json.asText()).toNanoOfDay() / 1_000L;
+                }
+                case "timestamp-millis" -> {
+                    if (json.isIntegralNumber()) yield json.longValue();
+                    yield parseInstantLenient(json.asText()).toEpochMilli();
+                }
+                case "timestamp-micros" -> {
+                    if (json.isIntegralNumber()) yield json.longValue();
+                    Instant i = parseInstantLenient(json.asText());
+                    yield Math.multiplyExact(i.getEpochSecond(), 1_000_000L) + i.getNano() / 1_000L;
+                }
+                case "local-timestamp-millis" -> {
+                    if (json.isIntegralNumber()) yield json.longValue();
+                    yield LocalDateTime.parse(json.asText()).toInstant(ZoneOffset.UTC).toEpochMilli();
+                }
+                case "local-timestamp-micros" -> {
+                    if (json.isIntegralNumber()) yield json.longValue();
+                    LocalDateTime ldt = LocalDateTime.parse(json.asText());
+                    Instant i = ldt.toInstant(ZoneOffset.UTC);
+                    yield Math.multiplyExact(i.getEpochSecond(), 1_000_000L) + i.getNano() / 1_000L;
+                }
+                case "uuid" -> json.asText();
+                default -> UNHANDLED; // decimal etc. — fall back to primitive handling
+            };
+        } catch (DateTimeParseException | NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "Cannot convert JSON " + json + " to Avro logical type '" + name + "' at " + path + ": " + e.getMessage(), e);
+        }
+    }
+
+    /** Accept "YYYY-MM-DD" as well as a full ISO timestamp (in which case take the UTC date portion). */
+    private static LocalDate parseLocalDateLenient(String s) {
+        try {
+            return LocalDate.parse(s);
+        } catch (DateTimeParseException primary) {
+            try {
+                return OffsetDateTime.parse(s).atZoneSameInstant(ZoneOffset.UTC).toLocalDate();
+            } catch (DateTimeParseException ignored) {
+                throw primary;
+            }
+        }
+    }
+
+    /** Accept ISO instant ("2026-01-01T00:00:00Z") or offset-date-time; otherwise let Instant.parse decide. */
+    private static Instant parseInstantLenient(String s) {
+        try {
+            return Instant.parse(s);
+        } catch (DateTimeParseException primary) {
+            try {
+                return OffsetDateTime.parse(s).toInstant();
+            } catch (DateTimeParseException ignored) {
+                throw primary;
+            }
+        }
     }
 
     private static boolean isNullable(Schema schema) {

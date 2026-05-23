@@ -3,6 +3,7 @@
   "name": "Alice",
   "email": "alice@example.com",
   "age": 30,
-  "createdAt": "${now.millis}",
+  "birthDate": "1995-04-12",
+  "createdAt": "${now.iso}",
   "tags": ["beta", "admin"]
 }

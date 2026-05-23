@@ -7,7 +7,8 @@
     { "name": "name",      "type": "string" },
     { "name": "email",     "type": "string" },
     { "name": "age",       "type": ["null", "int"], "default": null },
-    { "name": "createdAt", "type": "long" },
+    { "name": "birthDate", "type": { "type": "int", "logicalType": "date" } },
+    { "name": "createdAt", "type": { "type": "long", "logicalType": "timestamp-millis" } },
     { "name": "tags",      "type": { "type": "array", "items": "string" }, "default": [] }
   ]
 }
