@@ -1,0 +1,68 @@
+# =============================================================================
+# kafka-producer-common-stub
+#
+# Edit the `app.*` and `spring.cloud.stream.kafka.binder.*` sections below.
+# Everything else can be left alone.
+# =============================================================================
+
+app:
+  # ONESHOT  → publish all topics once on startup, then exit (CLI-style).
+  # SERVER   → keep running; trigger publishes via POST /publish/{key}.
+  mode: ONESHOT
+
+  # Default repetition count per JSON record when a topic doesn't override it.
+  records-per-topic: 1
+
+  # Add one entry per topic you want to publish to.
+  # - key:               short id used in REST endpoints (e.g. POST /publish/user)
+  # - topic:             actual Kafka topic name
+  # - json-path:         classpath: or file: URI to the sample JSON
+  #                      (object = single record, array = one record per element)
+  # - avro-schema-path:  classpath: or file: URI to the .avsc file for this topic
+  # - record-count:      (optional) override records-per-topic for this topic
+  # - message-key-field: (optional) JSON field whose value becomes the Kafka record key
+  topics:
+    - key: user
+      topic: user-events
+      json-path: classpath:samples/user.json
+      avro-schema-path: classpath:samples/user.avsc
+      record-count: 3
+      message-key-field: id
+
+spring:
+  application:
+    name: kafka-producer-common-stub
+
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:localhost:9092}
+          # For SASL/SSL clusters, add (and set the env vars):
+          #   configuration:
+          #     security.protocol: SASL_SSL
+          #     sasl.mechanism: SCRAM-SHA-512
+          #     sasl.jaas.config: org.apache.kafka.common.security.scram.ScramLoginModule required username="${KAFKA_USER}" password="${KAFKA_PASSWORD}";
+          configuration:
+            schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
+        default:
+          producer:
+            configuration:
+              key.serializer: org.apache.kafka.common.serialization.StringSerializer
+              value.serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+              schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8081}
+              auto.register.schemas: true
+      default:
+        producer:
+          # Required so StreamBridge hands the GenericRecord straight to KafkaAvroSerializer
+          # instead of trying to convert it itself.
+          use-native-encoding: true
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    com.example.kafkastub: INFO
+    org.apache.kafka: WARN
+    org.springframework.cloud.stream: INFO
