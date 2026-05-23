@@ -1,6 +1,7 @@
 package com.example.kafkastub.web;
 
 import com.example.kafkastub.config.AppProperties;
+import com.example.kafkastub.mapping.JsonPlaceholderResolver;
 import com.example.kafkastub.mapping.JsonToAvroMapper;
 import com.example.kafkastub.mapping.SchemaLoader;
 import com.example.kafkastub.producer.AvroPublisher;
@@ -20,15 +21,18 @@ public class PublishController {
 
     private final AppProperties props;
     private final SchemaLoader schemaLoader;
+    private final JsonPlaceholderResolver placeholderResolver;
     private final JsonToAvroMapper mapper;
     private final AvroPublisher publisher;
 
     public PublishController(AppProperties props,
                              SchemaLoader schemaLoader,
+                             JsonPlaceholderResolver placeholderResolver,
                              JsonToAvroMapper mapper,
                              AvroPublisher publisher) {
         this.props = props;
         this.schemaLoader = schemaLoader;
+        this.placeholderResolver = placeholderResolver;
         this.mapper = mapper;
         this.publisher = publisher;
     }
@@ -68,13 +72,14 @@ public class PublishController {
         return sent;
     }
 
-    private int sendOne(AppProperties.TopicSpec spec, Schema schema, JsonNode element, int count) {
-        GenericRecord record = mapper.toRecord(element, schema);
-        String messageKey = (spec.messageKeyField() != null && !spec.messageKeyField().isBlank()
-                && element.get(spec.messageKeyField()) != null)
-                ? element.get(spec.messageKeyField()).asText()
-                : null;
+    private int sendOne(AppProperties.TopicSpec spec, Schema schema, JsonNode template, int count) {
         for (int i = 0; i < count; i++) {
+            JsonNode resolved = placeholderResolver.resolve(template);
+            GenericRecord record = mapper.toRecord(resolved, schema);
+            String messageKey = (spec.messageKeyField() != null && !spec.messageKeyField().isBlank()
+                    && resolved.get(spec.messageKeyField()) != null)
+                    ? resolved.get(spec.messageKeyField()).asText()
+                    : null;
             publisher.publish(spec.topic(), record, messageKey);
         }
         return count;

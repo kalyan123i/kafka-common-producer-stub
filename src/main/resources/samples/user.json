@@ -1,8 +1,8 @@
 {
-  "id": "u-001",
+  "id": "${uuid}",
   "name": "Alice",
   "email": "alice@example.com",
   "age": 30,
-  "createdAt": 1716470400000,
+  "createdAt": "${now.millis}",
   "tags": ["beta", "admin"]
 }

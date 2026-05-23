@@ -93,6 +93,24 @@ curl -X POST http://localhost:8080/publish/user/inline \
 
 No Java changes required.
 
+## Dynamic values in sample JSON
+
+The sample JSON files support `${...}` placeholders that are re-evaluated **on every send** (so each record gets a fresh value, not the same value reused N times):
+
+| Placeholder | Replaced with |
+|---|---|
+| `${uuid}` | `UUID.randomUUID()` |
+| `${now.millis}` | current epoch millis |
+| `${now.iso}` | current `Instant` (ISO-8601) |
+
+Unknown placeholders pass through unchanged. Example:
+
+```json
+{ "id": "${uuid}", "createdAt": "${now.millis}", "name": "Alice" }
+```
+
+To add more (e.g. `${random.int}`), extend the `switch` in `JsonPlaceholderResolver`.
+
 ## Mapping rules (strict + defaults)
 
 - Field names in the JSON must match the Avro schema field names exactly.

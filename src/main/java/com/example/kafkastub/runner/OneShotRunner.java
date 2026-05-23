@@ -1,6 +1,7 @@
 package com.example.kafkastub.runner;
 
 import com.example.kafkastub.config.AppProperties;
+import com.example.kafkastub.mapping.JsonPlaceholderResolver;
 import com.example.kafkastub.mapping.JsonToAvroMapper;
 import com.example.kafkastub.mapping.SchemaLoader;
 import com.example.kafkastub.producer.AvroPublisher;
@@ -27,17 +28,20 @@ public class OneShotRunner implements ApplicationRunner {
 
     private final AppProperties props;
     private final SchemaLoader schemaLoader;
+    private final JsonPlaceholderResolver placeholderResolver;
     private final JsonToAvroMapper mapper;
     private final AvroPublisher publisher;
     private final ConfigurableApplicationContext context;
 
     public OneShotRunner(AppProperties props,
                          SchemaLoader schemaLoader,
+                         JsonPlaceholderResolver placeholderResolver,
                          JsonToAvroMapper mapper,
                          AvroPublisher publisher,
                          ConfigurableApplicationContext context) {
         this.props = props;
         this.schemaLoader = schemaLoader;
+        this.placeholderResolver = placeholderResolver;
         this.mapper = mapper;
         this.publisher = publisher;
         this.context = context;
@@ -76,10 +80,11 @@ public class OneShotRunner implements ApplicationRunner {
         log.info("Topic '{}': {} JSON record(s) x {} repetition(s) → {} message(s)",
                 spec.topic(), elements.size(), perElement, elements.size() * perElement);
 
-        for (JsonNode element : elements) {
-            GenericRecord record = mapper.toRecord(element, schema);
-            String key = resolveKey(element, spec);
+        for (JsonNode template : elements) {
             for (int i = 0; i < perElement; i++) {
+                JsonNode resolved = placeholderResolver.resolve(template);
+                GenericRecord record = mapper.toRecord(resolved, schema);
+                String key = resolveKey(resolved, spec);
                 publisher.publish(spec.topic(), record, key);
             }
         }
