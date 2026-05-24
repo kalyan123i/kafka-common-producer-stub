@@ -23,8 +23,8 @@
         <spring-cloud.version>2025.0.0</spring-cloud.version>
         <!-- Bump if your Schema Registry / Avro version requires a different Confluent client. -->
         <confluent.version>8.0.0</confluent.version>
-        <avro.version>1.21.1</avro.version>
-        <!-- Jackson 3.0: package rename com.fasterxml.jackson.* -> tools.jackson.* -->
+        <avro.version>1.12.1</avro.version>
+        <!-- Override Spring Boot's managed Jackson version. Spring Boot's BOM uses this property. -->
         <jackson.version>3.0.0</jackson.version>
     </properties>
 
@@ -34,13 +34,6 @@
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
                 <version>${spring-cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>tools.jackson</groupId>
-                <artifactId>jackson-bom</artifactId>
-                <version>${jackson.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

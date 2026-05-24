@@ -1,6 +1,6 @@
 package com.example.kafkastub.mapping;
 
-import tools.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
@@ -17,6 +17,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -52,7 +53,9 @@ public class JsonToAvroMapper {
                 .map(Schema.Field::name)
                 .collect(Collectors.toSet());
 
-        for (String key : json.propertyNames()) {
+        Iterator<String> it = json.fieldNames();
+        while (it.hasNext()) {
+            String key = it.next();
             if (!avroFieldNames.contains(key)) {
                 throw new IllegalArgumentException(
                         "Unknown JSON field '" + key + "' at " + path + " — not declared in Avro schema " + schema.getFullName());
@@ -121,7 +124,7 @@ public class JsonToAvroMapper {
             throw new IllegalArgumentException("Expected JSON object at " + path + ", got " + json.getNodeType());
         }
         Map<String, Object> m = new HashMap<>();
-        json.properties().forEach(e ->
+        json.fields().forEachRemaining(e ->
                 m.put(e.getKey(), convert(e.getValue(), schema.getValueType(), path + "." + e.getKey())));
         return m;
     }
