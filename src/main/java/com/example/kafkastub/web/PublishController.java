@@ -55,10 +55,11 @@ public class PublishController {
     public ResponseEntity<Map<String, Object>> publishInline(
             @PathVariable String key,
             @RequestParam(defaultValue = "1") int count,
-            @RequestBody JsonNode body) {
+            @RequestBody String body) {
         AppProperties.TopicSpec spec = findSpec(key);
         Schema schema = schemaLoader.loadSchema(spec.avroSchemaPath());
-        int sent = sendAll(spec, schema, body, count);
+        JsonNode parsed = schemaLoader.parseJson(body);
+        int sent = sendAll(spec, schema, parsed, count);
         return ResponseEntity.ok(Map.of("topic", spec.topic(), "sent", sent));
     }
 

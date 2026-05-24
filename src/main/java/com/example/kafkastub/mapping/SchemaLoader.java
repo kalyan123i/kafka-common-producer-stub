@@ -39,6 +39,14 @@ public class SchemaLoader {
         }
     }
 
+    public JsonNode parseJson(String json) {
+        try {
+            return objectMapper.readTree(json);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Failed to parse JSON body: " + e.getMessage(), e);
+        }
+    }
+
     private static String normalize(String path) {
         // accept "classpath:foo", "file:/tmp/foo", or a bare path treated as a filesystem path
         if (path.contains(":")) return path;
