@@ -24,8 +24,10 @@
         <!-- Bump if your Schema Registry / Avro version requires a different Confluent client. -->
         <confluent.version>8.0.0</confluent.version>
         <avro.version>1.12.1</avro.version>
-        <!-- Override Spring Boot's managed Jackson version. Spring Boot's BOM uses this property. -->
-        <jackson.version>3.0.0</jackson.version>
+        <!-- Jackson 3 lives under a different groupId (tools.jackson) and coexists with Spring Boot's
+             bundled Jackson 2. Do NOT set <jackson.version> here — that property re-targets Spring
+             Boot's com.fasterxml.jackson.* artifacts, which have no 3.x release. -->
+        <jackson3.version>3.0.0</jackson3.version>
     </properties>
 
     <dependencyManagement>
@@ -37,12 +39,11 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <!-- Jackson 3 lives under the `tools.jackson` groupId. Importing this BOM
-                 pins jackson-databind / jackson-core / jackson-annotations to 3.x. -->
+            <!-- Jackson 3 BOM under the tools.jackson groupId. Coexists with Jackson 2 (different package). -->
             <dependency>
                 <groupId>tools.jackson</groupId>
                 <artifactId>jackson-bom</artifactId>
-                <version>${jackson.version}</version>
+                <version>${jackson3.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

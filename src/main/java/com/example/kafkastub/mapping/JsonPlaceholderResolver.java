@@ -46,7 +46,7 @@ public class JsonPlaceholderResolver {
                     if (!resolved.equals(v.asString())) {
                         obj.set(name, JsonNodeFactory.instance.stringNode(resolved));
                     }
-                } else if (v.isContainerNode()) {
+                } else if ((v.isObject() || v.isArray())) {
                     walk(v);
                 }
             }
@@ -59,7 +59,7 @@ public class JsonPlaceholderResolver {
                     if (!resolved.equals(el.asString())) {
                         arr.set(i, JsonNodeFactory.instance.stringNode(resolved));
                     }
-                } else if (el.isContainerNode()) {
+                } else if ((el.isObject() || el.isArray())) {
                     walk(el);
                 }
             }

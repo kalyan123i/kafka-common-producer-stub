@@ -5,7 +5,7 @@ import com.example.kafkastub.mapping.JsonPlaceholderResolver;
 import com.example.kafkastub.mapping.JsonToAvroMapper;
 import com.example.kafkastub.mapping.SchemaLoader;
 import com.example.kafkastub.producer.AvroPublisher;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.slf4j.Logger;
