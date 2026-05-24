@@ -1,7 +1,7 @@
 package com.example.kafkastub.mapping;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import org.apache.avro.Schema;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -14,11 +14,11 @@ import java.io.InputStream;
 public class SchemaLoader {
 
     private final ResourceLoader resourceLoader;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper jsonMapper;
 
-    public SchemaLoader(ResourceLoader resourceLoader, ObjectMapper objectMapper) {
+    public SchemaLoader(ResourceLoader resourceLoader, JsonMapper jsonMapper) {
         this.resourceLoader = resourceLoader;
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
     }
 
     public Schema loadSchema(String path) {
@@ -33,7 +33,7 @@ public class SchemaLoader {
     public JsonNode loadJson(String path) {
         Resource r = resourceLoader.getResource(normalize(path));
         try (InputStream in = r.getInputStream()) {
-            return objectMapper.readTree(in);
+            return jsonMapper.readTree(in);
         } catch (IOException e) {
             throw new IllegalArgumentException("Failed to load JSON from '" + path + "': " + e.getMessage(), e);
         }

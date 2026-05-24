@@ -93,6 +93,6 @@ public class OneShotRunner implements ApplicationRunner {
     private static String resolveKey(JsonNode element, AppProperties.TopicSpec spec) {
         if (spec.messageKeyField() == null || spec.messageKeyField().isBlank()) return null;
         JsonNode k = element.get(spec.messageKeyField());
-        return k == null || k.isNull() ? null : k.asText();
+        return k == null || k.isNull() ? null : k.asString();
     }
 }

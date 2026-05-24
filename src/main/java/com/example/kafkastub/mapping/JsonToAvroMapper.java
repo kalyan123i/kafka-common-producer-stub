@@ -1,6 +1,6 @@
 package com.example.kafkastub.mapping;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
@@ -17,7 +17,6 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -53,9 +52,7 @@ public class JsonToAvroMapper {
                 .map(Schema.Field::name)
                 .collect(Collectors.toSet());
 
-        Iterator<String> it = json.fieldNames();
-        while (it.hasNext()) {
-            String key = it.next();
+        for (String key : json.propertyNames()) {
             if (!avroFieldNames.contains(key)) {
                 throw new IllegalArgumentException(
                         "Unknown JSON field '" + key + "' at " + path + " — not declared in Avro schema " + schema.getFullName());
@@ -90,7 +87,7 @@ public class JsonToAvroMapper {
         }
         return switch (schema.getType()) {
             case RECORD -> buildRecord(json, schema, path);
-            case STRING -> json.isTextual() ? json.asText() : json.toString();
+            case STRING -> json.isString() ? json.asString() : json.toString();
             case INT -> coerceInt(json, path);
             case LONG -> coerceLong(json, path);
             case FLOAT -> (float) coerceDouble(json, path);
@@ -99,7 +96,7 @@ public class JsonToAvroMapper {
             case BYTES -> ByteBuffer.wrap(bytesOf(json));
             case FIXED -> new GenericData.Fixed(schema, bytesOf(json));
             case NULL -> null;
-            case ENUM -> new GenericData.EnumSymbol(schema, json.asText());
+            case ENUM -> new GenericData.EnumSymbol(schema, json.asString());
             case ARRAY -> buildArray(json, schema, path);
             case MAP -> buildMap(json, schema, path);
             case UNION -> resolveUnion(json, schema, path);
@@ -124,7 +121,7 @@ public class JsonToAvroMapper {
             throw new IllegalArgumentException("Expected JSON object at " + path + ", got " + json.getNodeType());
         }
         Map<String, Object> m = new HashMap<>();
-        json.fields().forEachRemaining(e ->
+        json.properties().forEach(e ->
                 m.put(e.getKey(), convert(e.getValue(), schema.getValueType(), path + "." + e.getKey())));
         return m;
     }
@@ -147,21 +144,21 @@ public class JsonToAvroMapper {
                 case "date", "time-millis", "time-micros",
                      "timestamp-millis", "timestamp-micros",
                      "local-timestamp-millis", "local-timestamp-micros":
-                    return json.isTextual() || json.isIntegralNumber();
+                    return json.isString() || json.isIntegralNumber();
                 case "uuid":
-                    return json.isTextual();
+                    return json.isString();
                 default:
                     // fall through to underlying primitive check
             }
         }
         return switch (branch.getType()) {
-            case STRING, ENUM -> json.isTextual();
-            case INT, LONG -> json.isIntegralNumber() || (json.isTextual() && isIntegral(json.asText()));
-            case FLOAT, DOUBLE -> json.isNumber() || (json.isTextual() && isNumeric(json.asText()));
-            case BOOLEAN -> json.isBoolean() || (json.isTextual() && ("true".equalsIgnoreCase(json.asText()) || "false".equalsIgnoreCase(json.asText())));
+            case STRING, ENUM -> json.isString();
+            case INT, LONG -> json.isIntegralNumber() || (json.isString() && isIntegral(json.asString()));
+            case FLOAT, DOUBLE -> json.isNumber() || (json.isString() && isNumeric(json.asString()));
+            case BOOLEAN -> json.isBoolean() || (json.isString() && ("true".equalsIgnoreCase(json.asString()) || "false".equalsIgnoreCase(json.asString())));
             case ARRAY -> json.isArray();
             case MAP, RECORD -> json.isObject();
-            case BYTES, FIXED -> json.isTextual() || json.isBinary();
+            case BYTES, FIXED -> json.isString() || json.isBinary();
             case NULL -> json.isNull();
             case UNION -> false;
         };
@@ -178,37 +175,37 @@ public class JsonToAvroMapper {
             return switch (name) {
                 case "date" -> {
                     if (json.isIntegralNumber()) yield json.intValue();
-                    String s = json.asText();
+                    String s = json.asString();
                     yield (int) parseLocalDateLenient(s).toEpochDay();
                 }
                 case "time-millis" -> {
                     if (json.isIntegralNumber()) yield json.intValue();
-                    yield (int) (LocalTime.parse(json.asText()).toNanoOfDay() / 1_000_000L);
+                    yield (int) (LocalTime.parse(json.asString()).toNanoOfDay() / 1_000_000L);
                 }
                 case "time-micros" -> {
                     if (json.isIntegralNumber()) yield json.longValue();
-                    yield LocalTime.parse(json.asText()).toNanoOfDay() / 1_000L;
+                    yield LocalTime.parse(json.asString()).toNanoOfDay() / 1_000L;
                 }
                 case "timestamp-millis" -> {
                     if (json.isIntegralNumber()) yield json.longValue();
-                    yield parseInstantLenient(json.asText()).toEpochMilli();
+                    yield parseInstantLenient(json.asString()).toEpochMilli();
                 }
                 case "timestamp-micros" -> {
                     if (json.isIntegralNumber()) yield json.longValue();
-                    Instant i = parseInstantLenient(json.asText());
+                    Instant i = parseInstantLenient(json.asString());
                     yield Math.multiplyExact(i.getEpochSecond(), 1_000_000L) + i.getNano() / 1_000L;
                 }
                 case "local-timestamp-millis" -> {
                     if (json.isIntegralNumber()) yield json.longValue();
-                    yield LocalDateTime.parse(json.asText()).toInstant(ZoneOffset.UTC).toEpochMilli();
+                    yield LocalDateTime.parse(json.asString()).toInstant(ZoneOffset.UTC).toEpochMilli();
                 }
                 case "local-timestamp-micros" -> {
                     if (json.isIntegralNumber()) yield json.longValue();
-                    LocalDateTime ldt = LocalDateTime.parse(json.asText());
+                    LocalDateTime ldt = LocalDateTime.parse(json.asString());
                     Instant i = ldt.toInstant(ZoneOffset.UTC);
                     yield Math.multiplyExact(i.getEpochSecond(), 1_000_000L) + i.getNano() / 1_000L;
                 }
-                case "uuid" -> json.asText();
+                case "uuid" -> json.asString();
                 default -> UNHANDLED; // decimal etc. — fall back to primitive handling
             };
         } catch (DateTimeParseException | NumberFormatException e) {
@@ -250,8 +247,8 @@ public class JsonToAvroMapper {
 
     private static int coerceInt(JsonNode json, String path) {
         if (json.isIntegralNumber()) return json.intValue();
-        if (json.isTextual()) {
-            try { return Integer.parseInt(json.asText().trim()); }
+        if (json.isString()) {
+            try { return Integer.parseInt(json.asString().trim()); }
             catch (NumberFormatException e) { throw typeError(json, "int", path); }
         }
         throw typeError(json, "int", path);
@@ -259,8 +256,8 @@ public class JsonToAvroMapper {
 
     private static long coerceLong(JsonNode json, String path) {
         if (json.isIntegralNumber()) return json.longValue();
-        if (json.isTextual()) {
-            try { return Long.parseLong(json.asText().trim()); }
+        if (json.isString()) {
+            try { return Long.parseLong(json.asString().trim()); }
             catch (NumberFormatException e) { throw typeError(json, "long", path); }
         }
         throw typeError(json, "long", path);
@@ -268,8 +265,8 @@ public class JsonToAvroMapper {
 
     private static double coerceDouble(JsonNode json, String path) {
         if (json.isNumber()) return json.doubleValue();
-        if (json.isTextual()) {
-            try { return Double.parseDouble(json.asText().trim()); }
+        if (json.isString()) {
+            try { return Double.parseDouble(json.asString().trim()); }
             catch (NumberFormatException e) { throw typeError(json, "double", path); }
         }
         throw typeError(json, "double", path);
@@ -277,8 +274,8 @@ public class JsonToAvroMapper {
 
     private static boolean coerceBoolean(JsonNode json, String path) {
         if (json.isBoolean()) return json.booleanValue();
-        if (json.isTextual()) {
-            String s = json.asText().trim();
+        if (json.isString()) {
+            String s = json.asString().trim();
             if ("true".equalsIgnoreCase(s)) return true;
             if ("false".equalsIgnoreCase(s)) return false;
         }
@@ -289,7 +286,7 @@ public class JsonToAvroMapper {
         try {
             if (json.isBinary()) return json.binaryValue();
         } catch (Exception ignored) { /* fall through */ }
-        return json.asText().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return json.asString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private static boolean isIntegral(String s) {

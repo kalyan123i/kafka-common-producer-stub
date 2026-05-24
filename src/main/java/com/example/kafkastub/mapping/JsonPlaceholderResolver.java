@@ -1,9 +1,9 @@
 package com.example.kafkastub.mapping;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.node.ObjectNode;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -38,14 +38,13 @@ public class JsonPlaceholderResolver {
     private void walk(JsonNode node) {
         if (node.isObject()) {
             ObjectNode obj = (ObjectNode) node;
-            List<String> names = new ArrayList<>();
-            obj.fieldNames().forEachRemaining(names::add);
+            List<String> names = new ArrayList<>(obj.propertyNames());
             for (String name : names) {
                 JsonNode v = obj.get(name);
-                if (v.isTextual()) {
-                    String resolved = resolveString(v.asText());
-                    if (!resolved.equals(v.asText())) {
-                        obj.set(name, JsonNodeFactory.instance.textNode(resolved));
+                if (v.isString()) {
+                    String resolved = resolveString(v.asString());
+                    if (!resolved.equals(v.asString())) {
+                        obj.set(name, JsonNodeFactory.instance.stringNode(resolved));
                     }
                 } else if (v.isContainerNode()) {
                     walk(v);
@@ -55,10 +54,10 @@ public class JsonPlaceholderResolver {
             ArrayNode arr = (ArrayNode) node;
             for (int i = 0; i < arr.size(); i++) {
                 JsonNode el = arr.get(i);
-                if (el.isTextual()) {
-                    String resolved = resolveString(el.asText());
-                    if (!resolved.equals(el.asText())) {
-                        arr.set(i, JsonNodeFactory.instance.textNode(resolved));
+                if (el.isString()) {
+                    String resolved = resolveString(el.asString());
+                    if (!resolved.equals(el.asString())) {
+                        arr.set(i, JsonNodeFactory.instance.stringNode(resolved));
                     }
                 } else if (el.isContainerNode()) {
                     walk(el);

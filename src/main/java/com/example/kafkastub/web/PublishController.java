@@ -5,7 +5,7 @@ import com.example.kafkastub.mapping.JsonPlaceholderResolver;
 import com.example.kafkastub.mapping.JsonToAvroMapper;
 import com.example.kafkastub.mapping.SchemaLoader;
 import com.example.kafkastub.producer.AvroPublisher;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -78,7 +78,7 @@ public class PublishController {
             GenericRecord record = mapper.toRecord(resolved, schema);
             String messageKey = (spec.messageKeyField() != null && !spec.messageKeyField().isBlank()
                     && resolved.get(spec.messageKeyField()) != null)
-                    ? resolved.get(spec.messageKeyField()).asText()
+                    ? resolved.get(spec.messageKeyField()).asString()
                     : null;
             publisher.publish(spec.topic(), record, messageKey);
         }
