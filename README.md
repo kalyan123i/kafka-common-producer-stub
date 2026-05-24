@@ -125,6 +125,7 @@ Human-readable JSON values are accepted for these logical types and converted to
 | `local-timestamp-millis` | `long` | `"2026-01-01T00:00:00"` or integer |
 | `local-timestamp-micros` | `long` | `"2026-01-01T00:00:00"` or integer |
 | `uuid` | `string` | any string |
+| `decimal` | `bytes` or `fixed` | JSON number (`19.99`) or string (`"19.99"`); aligned to the schema's scale (HALF_UP) and validated against precision |
 
 The sample schema demonstrates `date` (`birthDate`) and `timestamp-millis` (`createdAt`).
 

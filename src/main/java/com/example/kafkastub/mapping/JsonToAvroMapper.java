@@ -2,11 +2,14 @@ package com.example.kafkastub.mapping;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.avro.LogicalType;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -16,6 +19,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -150,6 +154,8 @@ public class JsonToAvroMapper {
                     return json.isTextual() || json.isIntegralNumber();
                 case "uuid":
                     return json.isTextual();
+                case "decimal":
+                    return json.isNumber() || json.isTextual();
                 default:
                     // fall through to underlying primitive check
             }
@@ -209,12 +215,62 @@ public class JsonToAvroMapper {
                     yield Math.multiplyExact(i.getEpochSecond(), 1_000_000L) + i.getNano() / 1_000L;
                 }
                 case "uuid" -> json.asText();
-                default -> UNHANDLED; // decimal etc. — fall back to primitive handling
+                case "decimal" -> encodeDecimal(json, schema, (LogicalTypes.Decimal) logical, path);
+                default -> UNHANDLED;
             };
         } catch (DateTimeParseException | NumberFormatException e) {
             throw new IllegalArgumentException(
                     "Cannot convert JSON " + json + " to Avro logical type '" + name + "' at " + path + ": " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Encode a JSON number/string into an Avro decimal (bytes or fixed).
+     * Avro decimal = two's-complement bytes of the unscaled BigInteger value, with the schema's
+     * declared scale. For fixed-backed decimals we sign-extend to the declared fixed size.
+     */
+    private static Object encodeDecimal(JsonNode json, Schema schema, LogicalTypes.Decimal decimal, String path) {
+        BigDecimal value;
+        if (json.isNumber()) {
+            value = json.decimalValue();
+        } else if (json.isTextual()) {
+            try {
+                value = new BigDecimal(json.asText().trim());
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Cannot parse '" + json.asText() + "' as decimal at " + path, e);
+            }
+        } else {
+            throw new IllegalArgumentException("Expected number or string for decimal at " + path + ", got " + json.getNodeType());
+        }
+
+        // Align to the schema's declared scale. HALF_UP is lenient — swap to UNNECESSARY for strict mode.
+        value = value.setScale(decimal.getScale(), RoundingMode.HALF_UP);
+
+        if (value.precision() > decimal.getPrecision()) {
+            throw new IllegalArgumentException("Decimal value " + value + " exceeds schema precision "
+                    + decimal.getPrecision() + " at " + path);
+        }
+
+        byte[] unscaled = value.unscaledValue().toByteArray();
+
+        if (schema.getType() == Schema.Type.FIXED) {
+            byte[] padded = padTwosComplement(unscaled, schema.getFixedSize(), path);
+            return new GenericData.Fixed(schema, padded);
+        }
+        return ByteBuffer.wrap(unscaled);
+    }
+
+    private static byte[] padTwosComplement(byte[] bytes, int targetSize, String path) {
+        if (bytes.length == targetSize) return bytes;
+        if (bytes.length > targetSize) {
+            throw new IllegalArgumentException("Decimal needs " + bytes.length
+                    + " bytes but fixed size is " + targetSize + " at " + path);
+        }
+        byte signByte = (bytes[0] & 0x80) != 0 ? (byte) 0xFF : (byte) 0x00;
+        byte[] padded = new byte[targetSize];
+        Arrays.fill(padded, 0, targetSize - bytes.length, signByte);
+        System.arraycopy(bytes, 0, padded, targetSize - bytes.length, bytes.length);
+        return padded;
     }
 
     /** Accept "YYYY-MM-DD" as well as a full ISO timestamp (in which case take the UTC date portion). */
