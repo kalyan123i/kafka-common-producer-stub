@@ -24,10 +24,6 @@
         <!-- Bump if your Schema Registry / Avro version requires a different Confluent client. -->
         <confluent.version>8.0.0</confluent.version>
         <avro.version>1.12.1</avro.version>
-        <!-- Jackson 3 lives under a different groupId (tools.jackson) and coexists with Spring Boot's
-             bundled Jackson 2. Do NOT set <jackson.version> here — that property re-targets Spring
-             Boot's com.fasterxml.jackson.* artifacts, which have no 3.x release. -->
-        <jackson3.version>3.0.0</jackson3.version>
     </properties>
 
     <dependencyManagement>
@@ -36,14 +32,6 @@
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
                 <version>${spring-cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <!-- Jackson 3 BOM under the tools.jackson groupId. Coexists with Jackson 2 (different package). -->
-            <dependency>
-                <groupId>tools.jackson</groupId>
-                <artifactId>jackson-bom</artifactId>
-                <version>${jackson3.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -80,12 +68,6 @@
             <groupId>org.apache.avro</groupId>
             <artifactId>avro</artifactId>
             <version>${avro.version}</version>
-        </dependency>
-
-        <!-- Explicit Jackson 3 databind under tools.jackson groupId. -->
-        <dependency>
-            <groupId>tools.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
         </dependency>
 
         <dependency>

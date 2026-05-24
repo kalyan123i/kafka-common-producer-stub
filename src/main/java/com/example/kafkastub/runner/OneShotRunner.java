@@ -5,7 +5,7 @@ import com.example.kafkastub.mapping.JsonPlaceholderResolver;
 import com.example.kafkastub.mapping.JsonToAvroMapper;
 import com.example.kafkastub.mapping.SchemaLoader;
 import com.example.kafkastub.producer.AvroPublisher;
-import tools.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.slf4j.Logger;
@@ -93,6 +93,6 @@ public class OneShotRunner implements ApplicationRunner {
     private static String resolveKey(JsonNode element, AppProperties.TopicSpec spec) {
         if (spec.messageKeyField() == null || spec.messageKeyField().isBlank()) return null;
         JsonNode k = element.get(spec.messageKeyField());
-        return k == null || k.isNull() ? null : k.asString();
+        return k == null || k.isNull() ? null : k.asText();
     }
 }
