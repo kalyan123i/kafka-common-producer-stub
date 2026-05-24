@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.5</version>
+        <version>4.0.6</version>
         <relativePath/>
     </parent>
 
@@ -18,10 +18,14 @@
     <description>Config-driven JSON-to-Avro Kafka producer stub (Spring Cloud Stream Kafka binder)</description>
 
     <properties>
-        <java.version>17</java.version>
-        <spring-cloud.version>2023.0.3</spring-cloud.version>
-        <confluent.version>7.7.1</confluent.version>
-        <avro.version>1.11.3</avro.version>
+        <java.version>25</java.version>
+        <!-- Spring Cloud train aligned with Spring Boot 4.0.x. Verify against the official compatibility matrix. -->
+        <spring-cloud.version>2025.0.0</spring-cloud.version>
+        <!-- Bump if your Schema Registry / Avro version requires a different Confluent client. -->
+        <confluent.version>8.0.0</confluent.version>
+        <avro.version>1.21.1</avro.version>
+        <!-- Jackson 3.0: package rename com.fasterxml.jackson.* -> tools.jackson.* -->
+        <jackson.version>3.0.0</jackson.version>
     </properties>
 
     <dependencyManagement>
@@ -30,6 +34,13 @@
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
                 <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>tools.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

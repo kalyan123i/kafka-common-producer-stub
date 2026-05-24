@@ -1,9 +1,9 @@
 package com.example.kafkastub.mapping;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.node.TextNode;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -38,14 +38,13 @@ public class JsonPlaceholderResolver {
     private void walk(JsonNode node) {
         if (node.isObject()) {
             ObjectNode obj = (ObjectNode) node;
-            List<String> names = new ArrayList<>();
-            obj.fieldNames().forEachRemaining(names::add);
+            List<String> names = new ArrayList<>(obj.propertyNames());
             for (String name : names) {
                 JsonNode v = obj.get(name);
                 if (v.isTextual()) {
                     String resolved = resolveString(v.asText());
                     if (!resolved.equals(v.asText())) {
-                        obj.set(name, new TextNode(resolved));
+                        obj.set(name, TextNode.valueOf(resolved));
                     }
                 } else if (v.isContainerNode()) {
                     walk(v);
@@ -58,7 +57,7 @@ public class JsonPlaceholderResolver {
                 if (el.isTextual()) {
                     String resolved = resolveString(el.asText());
                     if (!resolved.equals(el.asText())) {
-                        arr.set(i, new TextNode(resolved));
+                        arr.set(i, TextNode.valueOf(resolved));
                     }
                 } else if (el.isContainerNode()) {
                     walk(el);
